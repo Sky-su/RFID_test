@@ -137,6 +137,11 @@ public class SoundPoolHelper {
             soundPool.play(ringtoneIds.get(ringtoneName),0.01f,0.01f,1,isLoop?-1:0,1);
         }
     }
+    public void playlooking(@NonNull String ringtoneName, boolean isLoop,short nu) {
+        if (ringtoneIds.containsKey(ringtoneName)) {
+            soundPool.play(ringtoneIds.get(ringtoneName),nu,nu,1,isLoop?-1:0,1);
+        }
+    }
 
     public void playDefault() {
         play("default",false);

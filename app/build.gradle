@@ -32,6 +32,8 @@ dependencies {
     //RFID
     api project(':RFID3Library')
     implementation 'com.google.android.material:material:1.0.0'
+    implementation 'com.github.warkiz.widget:indicatorseekbar:2.1.2'
+
 
 
 }

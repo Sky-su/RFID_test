@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -15,6 +17,7 @@ import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
@@ -36,6 +39,8 @@ import com.zebra.rfid.api3.OperationFailureException;
 import com.zebra.rfid.api3.RFIDReader;
 import com.zebra.rfid.api3.ReaderDevice;
 import com.zebra.rfid.api3.Readers;
+import com.zebra.rfid.api3.RegionInfo;
+import com.zebra.rfid.api3.RegulatoryConfig;
 import com.zebra.rfid.api3.RfidEventsListener;
 import com.zebra.rfid.api3.RfidReadEvents;
 import com.zebra.rfid.api3.RfidStatusEvents;
@@ -87,6 +92,8 @@ public class MainActivity extends AppCompatActivity {
     private SoundPoolHelper soundPoolHelper;
     private LayList layList;
     ProgressDialog progressDialog = null;
+    private String power;
+    private int powernumber = 297;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -104,7 +111,16 @@ public class MainActivity extends AppCompatActivity {
         setupLoadReaderTask();
         setupStatusMonitorTimer();
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-       // listView.setEmptyView(findViewById(R.id.texttagcountText));
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                RfidView item = (RfidView)adapterView.getItemAtPosition(i);
+                Intent intent = new Intent(getApplicationContext(), FindActivity.class);
+                intent.putExtra("id", item.getName());
+                startActivity(intent);
+            }
+        });
         soundPoolHelper = new SoundPoolHelper(4,SoundPoolHelper.TYPE_MUSIC)
                 .setRingtoneType(SoundPoolHelper.RING_TYPE_MUSIC)
                 //加载默认音频，因为上面指定了，所以其默认是：RING_TYPE_MUSIC
@@ -113,7 +129,11 @@ public class MainActivity extends AppCompatActivity {
                 .load(MainActivity.this,"happy1",R.raw.duka3);
 
     }
-
+    public String get_power(){
+        SharedPreferences sp = getSharedPreferences("power",MODE_PRIVATE);
+        String power = sp.getString("power","");
+        return power;
+    }
 
 
 
@@ -156,8 +176,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
 
-                layList.clear();
-                textViewlocalRead.setText("0");
+                if(layList!= null){
+                    layList.clear();
+                    textViewlocalRead.setText("0");
+                }
+
             }
         });
     }
@@ -220,6 +243,7 @@ public class MainActivity extends AppCompatActivity {
         task = new AsyncTask<Void, String, String>() {
             @Override
             protected synchronized String doInBackground(Void... voids) {
+                InvalidUsageException hj = null;
                 if (isCancelled()) return null;
                 if (readers == null) return null;
                 publishProgress("readers.GetAvailableRFIDReaderList()");
@@ -228,7 +252,16 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     list = readers.GetAvailableRFIDReaderList();
                 } catch (InvalidUsageException e) {
-                    e.printStackTrace();
+                    // e.printStackTrace();
+                    hj = e;
+
+                }
+                if (hj != null){
+                    readers.Dispose();
+                    readers = null;
+                    if (readers == null) {
+                        readers = new Readers(MainActivity.this, ENUM_TRANSPORT.BLUETOOTH);
+                    }
                 }
                 if (list == null || list.isEmpty()) return null;
                 publishProgress("device.getRFIDReader()");
@@ -241,9 +274,9 @@ public class MainActivity extends AppCompatActivity {
                     publishProgress("reader.connect()");
                     if (isCancelled()) return null;
                     try {
+
                         reader.connect();
                         configureReader();
-                        reader.Config.setBeeperVolume(BEEPER_VOLUME.MEDIUM_BEEP);
                     } catch (InvalidUsageException | OperationFailureException e) {
                         e.printStackTrace();
                     }
@@ -264,10 +297,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected void onPostExecute(String s) {
                 if (s == null) {
-                    setupRetryDialog();
+                   boolean isstarted = false;
+                    if (isstarted == false){
+                        setupLoadReaderTask();
+                        isstarted = true;
+                    }else{
+                        setupRetryDialog();
+                    }
                 } else {
                     progressDialog.dismiss();
-                    buttonStart.setEnabled(true);
                     Toast.makeText(getApplicationContext(), s, Toast.LENGTH_LONG).show();
                 }
             }
@@ -283,12 +321,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //RFD设备设置
-    private void configureReader() throws InvalidUsageException, OperationFailureException {
+    private void configureReader()  {
         if (reader == null || !reader.isConnected()) return;
         TriggerInfo triggerInfo = new TriggerInfo();
         triggerInfo.StartTrigger.setTriggerType(START_TRIGGER_TYPE.START_TRIGGER_TYPE_IMMEDIATE);
         triggerInfo.StopTrigger.setTriggerType(STOP_TRIGGER_TYPE.STOP_TRIGGER_TYPE_IMMEDIATE);
         if (eventHandler == null) eventHandler = new RfidEventHandler();
+
         try {
             reader.Events.addEventsListener(eventHandler);
             reader.Events.setHandheldEvent(true);
@@ -302,18 +341,26 @@ public class MainActivity extends AppCompatActivity {
             reader.Config.setStopTrigger(triggerInfo.StopTrigger);
             Antennas.AntennaRfConfig config = null;
             config = reader.Config.Antennas.getAntennaRfConfig(1);
-            config.setTransmitPowerIndex(270);
+            config.setTransmitPowerIndex(powernumber);
             config.setrfModeTableIndex(0);
             config.setTari(0);
             reader.Config.Antennas.setAntennaRfConfig(1, config);
             Antennas.SingulationControl control = reader.Config.Antennas.getSingulationControl(1);
             control.setSession(SESSION.SESSION_S0);
             reader.Config.Antennas.setSingulationControl(1, control);
+           int id =  config.getTransmitPowerIndex();
+            intoPower(String.valueOf(id));
             reader.Actions.PreFilters.deleteAll();
         } catch (InvalidUsageException | OperationFailureException e) {
             e.printStackTrace();
         } // Log.d("OperationFailureException", e.getVendorMessage());
 
+    }
+    public void intoPower(String pdaid){
+        SharedPreferences.Editor editor = getSharedPreferences("power",MODE_PRIVATE).edit();
+        editor.clear();
+        editor.putString("power",pdaid);
+        editor.commit();
     }
     private void setupRetryDialog() {
         if (progressDialog.isShowing()) progressDialog.dismiss();
@@ -340,7 +387,9 @@ public class MainActivity extends AppCompatActivity {
         buttonLoad.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                aloProgressDialog();
+               // aloProgressDialog();
+                Intent intent = new Intent(MainActivity.this,SettingActivity.class);
+                startActivity(intent);
             }
         });
     }
@@ -370,11 +419,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onRestart() {
-        super.onRestart();
-        setupLoadReaderTask();
-    }
+
 
     @Override
     public void onBackPressed() {
@@ -420,27 +465,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private Handler handler = new Handler(){
-        @Override
-        public void handleMessage(@NonNull Message msg) {
-            switch (msg.what){
 
-                case 0x22:
-                    //layList = new LayList(list,MainActivity.this);
-                    listView.setAdapter(layList);
-                    break;
-                case 0x33:
-                  layList.notifyDataSetChanged();
-                    break;
-
-                case 0x55:
-                    textViewlocalRead.setText("0");
-
-                default:
-                    break;
-            }
-        }
-    };
     //音效
     private class RfidEventHandler implements RfidEventsListener {
         @Override
@@ -448,9 +473,26 @@ public class MainActivity extends AppCompatActivity {
             TagData[] tags = reader.Actions.getReadTags(10);
             if (tags == null) return;
             for (TagData tag : tags) {
-                   soundPoolHelper.play("happy1",false);
-                gotTag(tag);
+                String tagName = tag.getTagID();
+                select(tagName);
             }
+        }
+        private void select(String tagName){
+            String Ascii = get_Ascii();
+            if (Ascii.equals("true")){
+                //if (tagName.substring(0,2).contains("40") == true){
+                    soundPoolHelper.play("happy1",false);
+                    gotTag(hexToAscii(tagName).replaceAll("@","").replaceAll("BB","").
+                            replaceAll("BW","").replaceAll("FB",""));
+                //}
+            } else{
+                soundPoolHelper.play("happy1",false);
+                gotTag(tagName);
+            }
+        }
+        public String get_Ascii(){
+            SharedPreferences sp = getSharedPreferences("ascii",MODE_PRIVATE);
+            return sp.getString("ascii","");
         }
 
         @SuppressLint("StaticFieldLeak")
@@ -461,14 +503,14 @@ public class MainActivity extends AppCompatActivity {
              Log.d("STATUS", type.toString());
             if (type == STATUS_EVENT_TYPE.BATTERY_EVENT) {
                 battery = data.BatteryData.getLevel();
-                Log.d(TAG,"电量："+battery );
+               // Log.d(TAG,"电量："+battery );
                 updateStatus();
             } else if (type == STATUS_EVENT_TYPE.TEMPERATURE_ALARM_EVENT) {
                 temperature = data.TemperatureAlarmData.getCurrentTemperature();
                 updateStatus();
             } else if (type == STATUS_EVENT_TYPE.POWER_EVENT){
               float io =  data.PowerData.getPower();
-              Log.d("Power", String.valueOf(io));
+              //Log.d("Power", String.valueOf(io));
 
             } else if (type == STATUS_EVENT_TYPE.HANDHELD_TRIGGER_EVENT) {
                 HANDHELD_TRIGGER_EVENT_TYPE eventType = data.HandheldTriggerEventData.getHandheldEvent();
@@ -519,7 +561,6 @@ public class MainActivity extends AppCompatActivity {
     }
     private void triggerStart() {
         isStarted = true;
-      //  handler.sendEmptyMessage(0x33);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -530,53 +571,8 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    private void aloProgressDialog(){
-
-        AlertDialog alertDialog = new
-                AlertDialog.Builder(MainActivity.this).create();
-        final EditText editText = new EditText(MainActivity.this);
-        editText.setInputType(3);
-        //创建AlertDialog对象
-        alertDialog.setIcon(R.drawable.icolook);//设置图标
-        alertDialog.setTitle("功率设置:");//设置标题
-        alertDialog.setTitle("范围：60—297");
-        alertDialog.setView(editText);
-        alertDialog.setButton(DialogInterface.BUTTON_NEGATIVE,
-                "确认", new Dialog.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Antennas.AntennaRfConfig config = null;
-                        String yu = editText.getText().toString();
-                        try {
-
-                            config = reader.Config.Antennas.getAntennaRfConfig(1);
-                            config.setTransmitPowerIndex(Integer.decode(yu));
-                            config.setrfModeTableIndex(0);
-                            config.setTari(0);
-                            reader.Config.Antennas.setAntennaRfConfig(1, config);
-                        } catch (InvalidUsageException e) {
-                            e.printStackTrace();
-                        } catch (OperationFailureException e) {
-                            e.printStackTrace();
-                        }
-
-                    }
-                });//取消按钮
-
-        alertDialog.setButton(DialogInterface.BUTTON_POSITIVE,
-                "取消", new Dialog.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(
-                                MainActivity.this, "您单击了取消按钮",
-                                Toast.LENGTH_SHORT).show();
-                    }
-                });//取消按钮
-        alertDialog.show();
-    }
     //读取标签信息
-    private void gotTag(TagData tag) {
-        final String tagid = tag.getTagID();
+    private void gotTag(final String tagid) {
         runOnUiThread(new Runnable() {
             @RequiresApi(api = Build.VERSION_CODES.N)
             @Override
@@ -587,13 +583,7 @@ public class MainActivity extends AppCompatActivity {
                     listView.setAdapter(layList);
                     textViewlocalRead.setText(String.valueOf(layList.getCount()));
                 }else{
-                    Set<RfidView> tags = new HashSet<>();
-                    list.add(new RfidView(tagid,1));
-                    tags.addAll(list);
-                    list.clear();
-                    list.addAll(tags);
-                    Log.d("jk:",list.toString());
-                    layList.notifyDataSetChanged();
+                    layList.additem(tagid);
                     textViewlocalRead.setText(String.valueOf(layList.getCount()));
                 }
 
@@ -601,17 +591,6 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    @Override
-    protected void onStop() {
-        super.onStop();
-        try {
-            reader.disconnect();
-        } catch (InvalidUsageException e) {
-            e.printStackTrace();
-        } catch (OperationFailureException e) {
-            e.printStackTrace();
-        }
-    }
 
     //ASCII转化
     private String hexToAscii(String str) {
@@ -620,6 +599,12 @@ public class MainActivity extends AppCompatActivity {
             sb.append((char) Integer.parseInt(str.substring(i, i + 2), 16));
         }
         return sb.toString();
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+
     }
 
 }

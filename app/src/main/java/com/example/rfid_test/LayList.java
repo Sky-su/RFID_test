@@ -22,7 +22,6 @@ public class LayList extends BaseAdapter {
     public LayList(List<RfidView> mData, Context context) {
         this.mData = mData;
         this.context = context;
-
     }
 
     public void clear() {
@@ -64,18 +63,28 @@ public class LayList extends BaseAdapter {
 
         //赋值
         holder.listItemID.setText(mData.get(position).getName());
-       // holder.listnumber.setText(String.valueOf(mData.get(position).getNumber()));
+        holder.listnumber.setText(String.valueOf(mData.get(position).getNumber()));
         notifyDataSetChanged();
         return convertView;
     }
 
-    public void additem(Set<RfidView> data){
+    public void additem(String data){
         if (mData == null) {
             mData = new LinkedList<>();
+        }else {
+            Boolean td = false;
+            for (RfidView item:mData) {
+                if (item.getName().equals(data)){
+                    item.setNumber(item.getNumber()+1);
+                    notifyDataSetChanged();
+                    td = true;
+                    break;
+                }
+            }
+            if (td == false) mData.add(new RfidView(data,1));
+            notifyDataSetChanged();
         }
-        mData.addAll(data);
-        mData = removeDuplicate(mData);
-        notifyDataSetChanged();
+
     }
 
     void resetData(List<RfidView> data){
@@ -112,10 +121,7 @@ public class LayList extends BaseAdapter {
 
 
     public class ViewHolder{
-
-
         TextView listItemID;
         TextView listnumber;
-
     }
 }

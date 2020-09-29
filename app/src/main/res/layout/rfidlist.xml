@@ -3,23 +3,28 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto">
-
     <TextView
         android:id="@+id/rfidTagIDg"
         android:layout_marginStart="8dp"
         android:layout_gravity="left"
-        android:textSize="13sp"
-        android:layout_width="wrap_content"
+        android:textSize="18sp"
+        android:layout_width="260dp"
         android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="5dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"/>
     <TextView
         android:id="@+id/rfidTagIDnumberg"
-        android:textSize="13sp"
+        android:textSize="18sp"
         android:layout_marginStart="8dp"
         android:layout_gravity="left"
+        android:layout_marginEnd="2dp"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="5dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

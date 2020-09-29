@@ -7,18 +7,24 @@
     <string name="explain">保存需要外部存储权限</string>
     <string name="label_read_total">已读</string>
     <string name="lanbel_readlocal">当前站点：</string>
-    <string name="load">功率</string>
+    <string name="load">设置</string>
     <string name="no_reader">未连接到扫码枪</string>
     <string name="no_start">启动失败，可能在充电</string>
     <string name="no_storage">未找到外部存储</string>
     <string name="nothing">无据可存</string>
     <string name="ok">确定</string>
-    <string name="retry">重试？</string>
+    <string name="retry">RFID模块未连接？</string>
     <string name="save">清空</string>
     <string name="start">开始</string>
     <string name="stop">停止</string>
     <string name="temperature">温度</string>
     <string name="connecting">尝试连接到扫描枪</string>
+    <string-array name="antennas">
+        <item>S0</item>
+        <item>S1</item>
+        <item>S2</item>
+        <item>S3</item>
+    </string-array>
     <!--类的文件名称-->
     <string name="userName">使用者：</string>
     <string name="tagId">标签Id：</string>
@@ -26,4 +32,5 @@
     <string name="gongyings">供应商：</string>
     <string name="jitainame">机台号：</string>
     <string name="xinghaoName">型号：</string>
-    <string name="chuchuangID">出厂编号：</string></resources>
+    <string name="chuchuangID">出厂编号：</string>
+</resources>
